@@ -2,7 +2,7 @@ import argparse
 import subprocess
 
 #Проверка запущенных сервисов; вывод критических сервисов в оффлайн режиме.
-def off_1():
+def service_stat():
     with open('/tmp/pika/crit_serv.txt') as life:
         crit_serv = life.read().split()
     command_line =["cat","/tmp/naucore"]
@@ -23,26 +23,26 @@ def off_1():
             print ser,':',sl_out[ser]
 
 #Проверка состояния внешних sip транков                       
-def off_2():
+def sip_trunk():
 
             
 #Проверка количества авторизованных пользователей на шине (опционально)           
-def off_3():
+def kolvo_oper():
         
                  
 
 parser = argparse.ArgumentParser(description='Parsing some files.')
-parser.add_argument('-1','--one',help = 'offline services',action = 'store_true')
-parser.add_argument('-2','--two',help = 'only critical offline services',action = 'store_true')
-parser.add_argument('-3','--three',help = 'online services',action = 'store_true')
+parser.add_argument('-1','--one',help = 'Check services',action = 'store_true')
+parser.add_argument('-2','--two',help = 'Check sip trunks',action = 'store_true')
+parser.add_argument('-3','--three',help = 'Check ',action = 'store_true')
 args = parser.parse_args()
 
 if args.one:
-        off_1()
+        service_stat()
 elif args.two:
-        #off_2()
+        #sip_trunk()
 elif args.three:
-        #off_3()
+        #kolvo_oper()
 else:
         print('Please see th HELP: "python test.py -h" or "python test.py --help" and try again')
 
