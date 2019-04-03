@@ -32,20 +32,22 @@ def sip_trunk():
             
 #Проверка количества авторизованных пользователей на шине (опционально)           
 def kolvo_oper():
-    with open('/tmp/pika/users.txt','r') as fol:
-        users = fol.read().splitlines()
-        print (users)
-        slov_out = []
-        for user in users:
-                res = re.findall(r'\bclient',user)
-                if len(res) > 0:
-                        slov_out.append(user)
-        if slov_out != '':
-            for i in range(len(slov_out)):
-                print slov_out[i]
-            sys.exit(0)
-        else:
-            sys.exit(1)
+    host = '192.168.56.101'
+    root_user = 'root'
+    secret = 'root123'
+    port = 22
+
+    ssh = paramiko.SSHClient()
+    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    ssh.connect(hostname=host, username=root_user, password=secret, port=port)
+    stdin, stdout, stderr = ssh.exec_command('sleep 1 | /opt/naumen/nauphone/bin/naucore show connections')
+    users = stdout.read().splitlines()
+    for user in users:
+        loh = user.dloh = user.decode()#ошибка
+        print(loh)
+    print('fuuuk')
+    ssh.close()
+    print('rpckkkk')
                  
 
 parser = argparse.ArgumentParser(description='Parsing some files.')
@@ -59,7 +61,7 @@ if args.services:
 elif args.trunks:
         #sip_trunk()
 elif args.users:
-        #kolvo_oper()
+        kolvo_oper()
 else:
         print('Please see th HELP: "python test.py -h" or "python test.py --help" and try again')
 
