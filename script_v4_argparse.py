@@ -2,53 +2,67 @@ import argparse
 import subprocess
 import sys
 import re
+import os
 
 
 
 #Проверка запущенных сервисов; вывод критических сервисов в оффлайн режиме.
 def service_stat():
-    with open('/tmp/pika/crit_serv.txt') as life:
-        crit_serv = life.read().split()
+    crit_serv = ["naubuddy", "nautel", "nausipproxy",  "naufileservice", "naucm", "nauqpm"]
     command_line =["cat","/tmp/naucore"]
     call = subprocess.Popen(command_line,stdout=subprocess.PIPE)
     filet = call.communicate()
-    file_in = filet[0]
+    file_in = filet[0].decode()
     lines = file_in.split()
     sl_out = {}
     for i in range(1,len(lines)):
         if lines[i] in crit_serv and lines[i + 2] == 'offline':
-                sl_out[lines[i]] = lines[i + 2]
+            sl_out[lines[i]] = lines[i + 2]
     if len(sl_out) < 1:
-        print('There are no offline services')
+        print('There are no offline services!')
         sys.exit(0)
     else:
-        print ('Attention!!! There is offline services:')
+        print ('There are offline services:')
         for ser in sl_out:
-            print ser,':',sl_out[ser]
+            print (ser,':',sl_out[ser])
         sys.exit(2)
+    
 #Проверка состояния внешних sip транков                       
 def sip_trunk():
-    #sys.exit(3)
-            
+    out_f = []
+    with open('/opt/naumen/nauphone/snmp/nausipproxy','r') as hope:
+        lines = hope.read().splitlines()
+    for line in lines:
+        ris = re.findall(r'2[\d]{2}',line)
+            if ris != []:
+                out_f.append(line)
+    if len(out_f) > 0:
+        for ot in out_f:
+            print(ot)
+        sys.exit(0)
+    else:
+        print('There are all sip trunks have bad status')
+        for line in lines:
+            print(line)
+        sys.exit(3)
+       
 #Проверка количества авторизованных пользователей на шине (опционально)           
 def kolvo_oper():
-    host = '192.168.56.101'
-    root_user = 'root'
-    secret = 'root123'
-    port = 22
-
-    ssh = paramiko.SSHClient()
-    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-    ssh.connect(hostname=host, username=root_user, password=secret, port=port)
-    stdin, stdout, stderr = ssh.exec_command('sleep 1 | /opt/naumen/nauphone/bin/naucore show connections')
-    users = stdout.read().splitlines()
-    for user in users:
-        loh = user.dloh = user.decode()#ошибка
-        print(loh)
-    print('fuuuk')
-    ssh.close()
-    print('rpckkkk')
-                 
+    command = os.popen("sleep 1 | /opt/naumen/nauphone/bin/naucore show connections")
+    slov_out = []
+    n = 0
+    for com in command:
+        res = re.findall(r'[(]\bclient',com)
+            if len(res) > 0:
+                slov_out.append(com)
+                    n += 1
+    print('Number of operators: ',n)
+    if n > 0:
+        for i in range(len(slov_out)):
+            print (slov_out[i])
+        sys.exit(0)
+    else:
+        sys.exit(1)
 
 parser = argparse.ArgumentParser(description='Parsing some files.')
 parser.add_argument('-s','--services',help = 'Check services',action = 'store_true')
@@ -59,7 +73,7 @@ args = parser.parse_args()
 if args.services:
         service_stat()
 elif args.trunks:
-        #sip_trunk()
+        sip_trunk()
 elif args.users:
         kolvo_oper()
 else:
