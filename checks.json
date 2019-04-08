@@ -2,18 +2,19 @@
 "checks": [
     {
       "name": "services",
-      "args": ["python script_all.py", "-m", "services"],
-      "success": "false"
+      "command": "script_all.service_stat()",
+      "success": "true"
     },
     {
       "name": "sip_trunks",
-      "args": ["python script_all.py", "-m", "sip_trunks"],
+      "command": "script_all.sip_trunk()",
       "success": "true"
     },
     {
       "name": "operators",
-      "args": ["python script_all.py", "-m", "operators"],
-      "success": "false"
+      "command": "script_all.kolvo_oper()",
+      "success": "true"
     }
   ]
 }
+
