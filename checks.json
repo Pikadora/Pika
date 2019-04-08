@@ -1,0 +1,19 @@
+{
+"checks": [
+    {
+      "name": "services",
+      "args": ["python script_all.py", "-m", "services"],
+      "success": "false"
+    },
+    {
+      "name": "sip_trunks",
+      "args": ["python script_all.py", "-m", "sip_trunks"],
+      "success": "true"
+    },
+    {
+      "name": "operators",
+      "args": ["python script_all.py", "-m", "operators"],
+      "success": "false"
+    }
+  ]
+}
