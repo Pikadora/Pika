@@ -33,8 +33,8 @@ def sip_trunk():
         lines = hope.read().splitlines()
     for line in lines:
         ris = re.findall(r'2[\d]{2}',line)
-            if ris != []:
-                out_f.append(line)
+        if ris != []:
+            out_f.append(line)
     if len(out_f) > 0:
         for ot in out_f:
             print(ot)
@@ -52,9 +52,9 @@ def kolvo_oper():
     n = 0
     for com in command:
         res = re.findall(r'[(]\bclient',com)
-            if len(res) > 0:
-                slov_out.append(com)
-                    n += 1
+        if len(res) > 0:
+            slov_out.append(com)
+            n += 1
     print('Number of operators: ',n)
     if n > 0:
         for i in range(len(slov_out)):
