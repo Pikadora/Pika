@@ -21,3 +21,5 @@ with open('/tmp/pika/checks.json','r')as lafa:
             print(data['checks'][i])
             print("__________________")
             script.kolvo_oper()
+        else:
+            print('Please see th HELP: "python test.py -h" or "python test.py --help" and try again')
