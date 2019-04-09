@@ -2,17 +2,17 @@
 "checks": [
     {
       "name": "services",
-      "command": "script_all.service_stat()",
+      "command": "service_stat()",
       "success": "true"
     },
     {
       "name": "sip_trunks",
-      "command": "script_all.sip_trunk()",
+      "command": "sip_trunk()",
       "success": "true"
     },
     {
       "name": "operators",
-      "command": "script_all.kolvo_oper()",
+      "command": "kolvo_oper()",
       "success": "true"
     }
   ]
