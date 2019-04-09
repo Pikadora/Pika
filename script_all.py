@@ -33,7 +33,7 @@ def sip_trunk():
     with open('/opt/naumen/nauphone/snmp/nausipproxy','r') as hope:
         lines = hope.read().splitlines() #считывание файла 
     for line in lines:
-        ris = re.findall(r'2[\d]{2}',line) #поиск кода, начинающегося на 2
+        ris = re.findall(r'2\d{2}',line) #поиск кода, начинающегося на 2
         if ris != []:
             out_f.append(line)
     if len(out_f) > 0:
@@ -48,7 +48,7 @@ def sip_trunk():
        
 #Проверка количества авторизованных пользователей на шине (опционально)           
 def kolvo_oper():
-    command = os.popen("sleep 1 | /opt/naumen/nauphone/bin/naucore show connections") #выполнение команды 
+    command = subprocess.Popen("sleep 1 | /opt/naumen/nauphone/bin/naucore show connections",shell = True,stdout = subprocess.PIPE).stdout #создание процесса выполнение команды 
     slov_out = []
     n = 0
     for com in command:
