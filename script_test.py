@@ -5,8 +5,6 @@ import argparse
 import jsonschema
 import traceback
 
-
-
 #Проверка запущенных сервисов; вывод критических сервисов в оффлайн режиме.
 def service_stat():
     crit_serv = ["naubuddy", "nautel", "nausipproxy",  "naufileservice", "naucm", "nauqpm"]
@@ -65,7 +63,6 @@ def kolvo_oper():
 
     sys.exit(1)
 
-
 # проверка json файла
 def check_json():
     # схема проверки json файла
@@ -85,14 +82,13 @@ def check_json():
             }
         }
     }
-
     # json файл
     data_json = {
         "checks": [
             {
                 "name": "services",
                 "command": "service_stat()",
-                "success": False
+                "success": True
             },
             {
                 "name": "sip_trunks",
@@ -102,7 +98,7 @@ def check_json():
             {
                 "name": "operators",
                 "command": "kolvo_oper()",
-                "success": False
+                "success": True
             }
         ]
     }
@@ -113,7 +109,7 @@ def check_json():
             with open("C:\\Users\\IT\\.PyCharmEdu2018.3\\config\\scratches\\checks_script.json", "r") as lop:
                 numb = json.load(lop)
             jsonschema.validate(numb, schema) #проверка входных данных с помощью jsonschema
-            print('Check is OK')
+            print('Check_json is OK')
         else:
             # создание json файла
             with open("C:\\Users\\IT\\.PyCharmEdu2018.3\\config\\scratches\\checks_script.json", "w") as spr:
@@ -122,10 +118,11 @@ def check_json():
     except jsonschema.exceptions.ValidationError:
          print('Ошибка в типе значений json файла:\n', traceback.format_exc())
 
-
+# в связи с аргументом и настройками в json файле, производится запуск функции необходимой проверки
 def check():
     # проверка json файла
     check_json()
+    lis = []
     #если аргумента нет - вывод подсказки обратиться в помощь
     if args_con.mode is None :
         print('Please see the HELP: "python test.py -h" or "python test.py --help" and try again')
@@ -137,23 +134,24 @@ def check():
         wtfk = data['checks'][i]
         #если обьявленный аргумент имеет имя проверки и она включена (имеет значение успеха - true):
         if args_con.mode == wtfk['name']:
+            lis.append(args_con.mode)
             if data['checks'][i]['success'] == True:
                 cod = data['checks'][i]['command']
-                # выполнить проверку
+                # выполнить запуск функции проверки
                 exec(cod)
             else:
-                print('Please see the config_file (check success true/false)')
+                print('Please see the checks_script.json (check success true/false)') #напоминание заглянуть в файл.
         else:
             continue
+    if args_con.mode not in lis: 
+        print('Check is not founded') #если упоминания проверки в json файле нет, выводится информация о ее отсутствии.
 
-
-
-
-
+#введение аргументов, для правильного запуска скрипта
 parser = argparse.ArgumentParser(description='Three check options.')
 parser.add_argument('-m','--mode',help = 'Check Modes: services,sip_trunks or operators')
 args_con = parser.parse_args()
 
+#запуск скрипта
 check()
 
 
