@@ -1,19 +1,60 @@
 {
-"checks": [
+  "servers": [
     {
-      "name": "services",
-      "command": "service_stat()",
-      "success": "true"
+      "server": "ip_add",
+      "crit_serv": [
+        "naubuddy",
+        "nautel",
+        "nausipproxy",
+        "naufileservice",
+        "naucm",
+        "nauqpm"
+      ],
+      "checks": [
+        {
+          "name": "services",
+          "command": "service_stat()",
+          "success": false
+        },
+        {
+          "name": "sip_trunks",
+          "command": "sip_trunk()",
+          "success": true
+        },
+        {
+          "name": "operators",
+          "command": "kolvo_oper()",
+          "success": false
+        }
+      ]
     },
     {
-      "name": "sip_trunks",
-      "command": "sip_trunk()",
-      "success": "true"
-    },
-    {
-      "name": "operators",
-      "command": "kolvo_oper()",
-      "success": "true"
+      "server": "ip_add",
+      "crit_serv": [
+        "naubuddy",
+        "nautel",
+        "nausipproxy",
+        "naufileservice",
+        "naucm",
+        "nauqpm"
+      ],
+      "checks": [
+        {
+          "name": "services",
+          "command": "service_stat()",
+          "success": false
+        },
+        {
+          "name": "sip_trunks",
+          "command": "sip_trunk()",
+          "success": true
+        },
+        {
+          "name": "operators",
+          "command": "kolvo_oper()",
+          "success": false
+        }
+      ]
     }
   ]
 }
