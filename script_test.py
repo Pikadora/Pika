@@ -4,155 +4,194 @@ import json, os.path
 import argparse
 import jsonschema
 import traceback
+import paramiko
 
-#Проверка запущенных сервисов; вывод критических сервисов в оффлайн режиме.
-def service_stat():
-    crit_serv = ["naubuddy", "nautel", "nausipproxy",  "naufileservice", "naucm", "nauqpm"]
-    command_line =["cat","/tmp/naucore"]
+def service_stat(arg):
+    crit_serv = arg
+    command_line =["cat","/opt/naumen/nauphone/snmp/naucore"]
     call = subprocess.Popen(command_line,stdout=subprocess.PIPE)
-    filet = call.communicate()
-    file_in = filet[0].decode()
+    file_call = call.communicate()
+    file_in = file_call[0].decode()
     lines = file_in.split()
-    sl_out = {}
+    dict_out = {}
     for i in range(1,len(lines)):
         if lines[i] in crit_serv and lines[i + 2] == 'offline':
-            sl_out[lines[i]] = lines[i + 2]
-    if sl_out:
+            dict_out[lines[i]] = lines[i + 2]
+    if dict_out:
         print ('There are offline services:')
-        for ser in sl_out:
-            print (ser,':',sl_out[ser])
-        sys.exit(2)
+        for ser in dict_out:
+            print (ser,':',dict_out[ser])
+        return (2)
 
     print('There are no offline services!')
-    sys.exit(0)
+    return (0)
 
-#Проверка состояния внешних sip транков
 def sip_trunk():
-    out_f = []
-    with open('C:\\Users\\IT\\.PyCharmEdu2018.3\\config\\scratches\\nausipproxy.txt','r') as hope:
-        lines = hope.read().splitlines()
-    for line in lines:
-        ris = re.findall(r'2[\d]{2}',line)
-        if ris != []:
-            out_f.append(line)
-    if len(out_f) > 0:
-        for ot in out_f:
+    out_file = []
+    with open("/opt/naumen/nauphone/snmp/nausipproxy","r") as fil:
+        fines = fil.read().splitlines()
+    for fine in fines:
+        stat = re.findall(r'2[\d]{2}',fine)
+        if stat != []:
+            out_file.append(fine)
+    if len(out_file) > 0:
+        for ot in out_file:
             print(ot)
-        sys.exit(0)
+        return (0)
 
     print('There are all sip trunks have bad status')
-    for line in lines:
-        print(line)
-    sys.exit(3)
+    for fine in fines:
+        print(fine)
+    return (3)
 
-#Проверка количества авторизованных пользователей на шине (опционально)
 def kolvo_oper():
     command = subprocess.Popen("sleep 1 | /opt/naumen/nauphone/bin/naucore show connections",shell = True,stdout = subprocess.PIPE).stdout
-    slov_out = []
+    dic_out = []
     n = 0
     for com in command:
-        res = re.findall(r'[(]\bclient',com)
-        if len(res) > 0:
-            slov_out.append(com)
+        oper = re.findall(r'[(]\bclient',com)
+        if oper != []:
+            dic_out.append(com)
             n += 1
     print('Number of operators: ',n)
     if n > 0:
-        for i in range(len(slov_out)):
-            print (slov_out[i])
-        sys.exit(0)
+        for i in range(len(dic_out)):
+            print (dic_out[i])
+        return (0)
 
-    sys.exit(1)
+    return (1)
 
-# проверка json файла
 def check_json():
-    # схема проверки json файла
     schema = {
         "type": "object",
         "properties": {
-            "checks": {
-                "type": "array",
-                "items": {
-                    "type": "object",
-                    "properties": {
-                        "name": {"type": "string"},
-                        "command": {"type": "string"},
-                        "success": {"type": "boolean"}
+                "service":{
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "server":{
+                                "type":"object",
+                                "properties": {
+                                    "host": {"type": "string"},
+                                    "user": {"type": "string"},
+                                    "password": {"type": "string"},
+                                    "port": {"type": "integer"},
+                                    "crit_serv": {
+                                        "type": "array",
+                                        "items": {
+                                            "type":"string"
+                                        }
+                                    },
+                                    "checks": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "object",
+                                            "properties": {
+                                                "name": {"type": "string"},
+                                                "command": {"type": "string"},
+                                                "success": {"type": "boolean"}
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
-            }
         }
     }
-    # json файл
+
     data_json = {
-        "checks": [
+        "servers": [
             {
-                "name": "services",
-                "command": "service_stat()",
-                "success": True
-            },
-            {
-                "name": "sip_trunks",
-                "command": "sip_trunk()",
-                "success": True
-            },
-            {
-                "name": "operators",
-                "command": "kolvo_oper()",
-                "success": True
-            }
-        ]
-    }
+                "server":
+                    {
+                        "host": "192.168.56.101",
+                        "user": "root",
+                        "password": "root123",
+                        "port": 22,
+                        "crit_serv": ["naubuddy","nautel","nausipproxy","naufileservice","naucm","nauqpm"],
+                        "checks": [
+                            {
+                                "name": "services",
+                                "command": "service_stat(arg)",
+                                "success": False
+                            },
+                            {
+                                "name": "sip_trunks",
+                                "command": "sip_trunk()",
+                                "success": True
+                            },
+                            {
+                                "name": "operators",
+                                "command": "kolvo_oper()",
+                                "success": False
+                            }
+                        ]
+                    }
+                }
+            ]
+        }
+
     try:
-        if os.path.isfile('C:\\Users\\IT\\.PyCharmEdu2018.3\\config\\scratches\\checks_script.json'):#проверка на имеющийся файл json
+        if os.path.isfile("/tmp/pika/checks_script.json"):
             print('File is here')
-            # считывание проверяемого json файла
-            with open("C:\\Users\\IT\\.PyCharmEdu2018.3\\config\\scratches\\checks_script.json", "r") as lop:
+            with open("/tmp/pika/checks_script.json", "r") as lop:
                 numb = json.load(lop)
-            jsonschema.validate(numb, schema) #проверка входных данных с помощью jsonschema
+            jsonschema.validate(numb, schema)
             print('Check_json is OK')
         else:
-            # создание json файла
-            with open("C:\\Users\\IT\\.PyCharmEdu2018.3\\config\\scratches\\checks_script.json", "w") as spr:
+            with open("/tmp/pika/checks_script.json", "w") as spr:
                 json.dump(data_json, spr,indent=4)
-            print('ya sozdal!')
+            print('Check_json now is here')
     except jsonschema.exceptions.ValidationError:
-         print('Ошибка в типе значений json файла:\n', traceback.format_exc())
+        print('json file:\n', traceback.format_exc())
 
-# в связи с аргументом и настройками в json файле, производится запуск функции необходимой проверки
-def check():
-    # проверка json файла
+def createParser():
+    parser = argparse.ArgumentParser(description='Three check options.')
+    parser.add_argument('-m','--mode',help = 'Check Modes: services,sip_trunks or operators')
+    parser.add_argument('-ip','--ip_add',action='append',dest='ip',help = 'Enter ip-address to connect to the server')
+    args_con = parser.parse_args()
+
+    return args_con
+
+def main():
+    args_con = createParser()
     check_json()
     lis = []
-    #если аргумента нет - вывод подсказки обратиться в помощь
-    if args_con.mode is None :
-        print('Please see the HELP: "python test.py -h" or "python test.py --help" and try again')
-        return
-    #если аргумента объявлен - проверить проверку на включенность
-    with open('C:\\Users\\IT\\.PyCharmEdu2018.3\\config\\scratches\\checks_script.json','r')as lafa:
+    with open("/tmp/pika/checks_script.json","r")as lafa:
         data = json.load(lafa)
-    for i in range(len(data['checks'])):
-        wtfk = data['checks'][i]
-        #если обьявленный аргумент имеет имя проверки и она включена (имеет значение успеха - true):
-        if args_con.mode == wtfk['name']:
-            lis.append(args_con.mode)
-            if data['checks'][i]['success'] == True:
-                cod = data['checks'][i]['command']
-                # выполнить запуск функции проверки
-                exec(cod)
-            else:
-                print('Please see the checks_script.json (check success true/false)') #напоминание заглянуть в файл.
-        else:
-            continue
-    if args_con.mode not in lis: 
-        print('Check is not founded') #если упоминания проверки в json файле нет, выводится информация о ее отсутствии.
 
-#введение аргументов, для правильного запуска скрипта
-parser = argparse.ArgumentParser(description='Three check options.')
-parser.add_argument('-m','--mode',help = 'Check Modes: services,sip_trunks or operators')
-args_con = parser.parse_args()
+    for i in range(len(data['servers'])):
 
-#запуск скрипта
-check()
+        host = data['servers'][i]['server']['host']
+        username = data['servers'][i]['server']['user']
+        #password = data['servers'][i]['server']['password']
+        port = data['servers'][i]['server']['port']
 
 
+        ssh = paramiko.SSHClient()
+        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 
+        privkey = paramiko.RSAKey.from_private_key_file('/root/.ssh/id_rsa')
+        ssh.connect(hostname=host, username=username, port=port, pkey=privkey)
+
+        for j in range(len(data['servers'][i]['server']['checks'])):
+            check = data['servers'][i]['server']['checks'][j]
+            if check['success'] == True:
+                cod = check['command']
+                arg = data['servers'][i]['server']['crit_serv']
+                cod_out = exec(cod)
+                if cod_out == "2":
+                    sys.exit(2)
+                elif cod_out == "3":
+                    sys.exit(3)
+                elif cod_out == "1":
+                    sys.exit(1)
+
+        ssh.close()
+    sys.exit(0)
+
+
+main()
