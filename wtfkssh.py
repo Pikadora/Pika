@@ -27,7 +27,7 @@ def service_stat(arg):
     print('There are no offline services!')
     return 0
 
-ef sip_trunk():
+def sip_trunk():
 
     cmnd_line ="cat /opt/naumen/nauphone/snmp/nausipproxy "
     stdin, stdout, stderr = ssh.exec_command(cmnd_line)
@@ -151,41 +151,80 @@ def createParser():
 
     return args_con
 
+def keys_check ():
+
+    tor = args_con.ip[0]
+    for i in range(len(data['servers'])):
+        if tor == data['servers'][i]['server']['host']:
+            host = data['servers'][i]['server']['host']
+            username = data['servers'][i]['server']['user']
+            #password = data['servers'][i]['server']['password']
+            port = data['servers'][i]['server']['port']
+            ssh = paramiko.SSHClient()
+            ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+            privkey = paramiko.RSAKey.from_private_key_file('/tmp/pika/ssh/id_rsa')
+            ssh.connect(hostname=host, username=username, port=port, pkey=privkey)
+
+            for j in range(len(data['servers'][i]['server']['checks'])):
+                wtfk = data['servers'][i]['server']['checks'][j]
+                if args_con.mode == wtfk['name']:
+                    lis.append(args_con.mode)
+                    if wtfk['success'] == True:
+                        cod = wtfk['command']
+                        if cod == 'service_stat(arg)':
+                            arg = data['servers'][i]['server']['crit_serv']
+                        cod_key = eval(cod)
+                    else:
+                        print('Please see the config_file (check success true/false)')
+                else:
+                    continue
+
+
+
+            ssh.close()
+    return cod_key
+
+
 if __name__ == "__main__":
 
     args_con = createParser()
     check_json()
-    test = []
+
 
     with open("/tmp/pika/checks_script.json","r")as lafa:
         data = json.load(lafa)
 
-    for i in range(len(data['servers'])):
-        host = data['servers'][i]['server']['host']
-        username = data['servers'][i]['server']['user']
-        #password = data['servers'][i]['server']['password']
-        port = data['servers'][i]['server']['port']
+    if args_con.ip is None and args_con.mode is None:
+        for i in range(len(data['servers'])):
+            host = data['servers'][i]['server']['host']
+            username = data['servers'][i]['server']['user']
+            #password = data['servers'][i]['server']['password']
+            port = data['servers'][i]['server']['port']
 
+            ssh = paramiko.SSHClient()
+            ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+            privkey = paramiko.RSAKey.from_private_key_file('/tmp/pika/ssh/id_rsa')
+            ssh.connect(hostname=host, username=username, port=port, pkey=privkey)
 
-        ssh = paramiko.SSHClient()
-        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        privkey = paramiko.RSAKey.from_private_key_file('/root/.ssh/id_rsa')
-        ssh.connect(hostname=host, username=username, port=port, pkey=privkey)
+            for j in range(len(data['servers'][i]['server']['checks'])):
+                check = data['servers'][i]['server']['checks'][j]
+                if check['success'] == True:
+                    cod = check['command']
+                    arg = data['servers'][i]['server']['crit_serv']
+                    cod_out = eval(cod)
 
-        for j in range(len(data['servers'][i]['server']['checks'])):
-            check = data['servers'][i]['server']['checks'][j]
-            if check['success'] == True:
-                cod = check['command']
-                arg = data['servers'][i]['server']['crit_serv']
-                cod_out = eval(cod)
-                if cod_out == "2":
-                    sys.exit(2)
-                elif cod_out == "3":
-                    sys.exit(3)
-                elif cod_out == "1":
-                    sys.exit(1)
-                else:
-                    continue
+            ssh.close()
+    elif args_con.ip is not None and args_con.mode is not None :
+        cod_out = keys_check()
 
-        ssh.close()
-    sys.exit(0)
+    else:
+        print('Please see the HELP: "python test.py -h" or "python test.py --help" and try again')
+
+    if cod_out == "2":
+        sys.exit(2)
+    elif cod_out == "3":
+        sys.exit(3)
+    elif cod_out == "1":
+        sys.exit(1)
+    else:
+        sys.exit(0)
