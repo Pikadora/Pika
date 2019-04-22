@@ -5,8 +5,7 @@ import argparse
 import jsonschema
 import traceback
 import paramiko
-
-
+import threading
 
 def service_stat(arg):
 
@@ -22,11 +21,10 @@ def service_stat(arg):
         print ('There are offline services:')
         for ser in dict_out:
             print (ser,':',dict_out[ser])
-        return 2
+        return 20
 
     print('There are no offline services!')
     return 0
-
 def sip_trunk():
 
     cmnd_line ="cat /opt/naumen/nauphone/snmp/nausipproxy "
@@ -49,7 +47,7 @@ def sip_trunk():
         print(fine)
     return 3
 
-def kolvo_oper():
+def sum_oper():
 
     cmnd_line = "sleep 1 | /opt/naumen/nauphone/bin/naucore show connections"
     stdin, stdout, stderr = ssh.exec_command(cmnd_line)
@@ -65,9 +63,9 @@ def kolvo_oper():
     if n > 0:
         for i in range(len(dic_out)):
             print (dic_out[i])
-        return (0)
+        return 0
 
-    return (1)
+    return 100
 
 def check_json():
     schema = {
@@ -115,7 +113,7 @@ def check_json():
             {
                 "server":
                     {
-                        "host": "172.16.200.250",
+                        "host": "172.16.201.18",
                         "user": "root",
                         "password": "root123",
                         "port": 22,
@@ -133,7 +131,7 @@ def check_json():
                             },
                             {
                                 "name": "operators",
-                                "command": "kolvo_oper()",
+                                "command": "sum_oper()",
                                 "success": True
                             }
                         ]
@@ -151,45 +149,31 @@ def createParser():
 
     return args_con
 
-def keys_check ():
+class CheckThread(threading.Thread):
 
-    tor = args_con.ip[0]
-    for i in range(len(data['servers'])):
-        if tor == data['servers'][i]['server']['host']:
-            host = data['servers'][i]['server']['host']
-            username = data['servers'][i]['server']['user']
-            #password = data['servers'][i]['server']['password']
-            port = data['servers'][i]['server']['port']
-            ssh = paramiko.SSHClient()
-            ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-            privkey = paramiko.RSAKey.from_private_key_file('/tmp/pika/ssh/id_rsa')
-            ssh.connect(hostname=host, username=username, port=port, pkey=privkey)
+    def init(self,cod):
+        
+        self.result = None
+        threading.Thread.init(self)
 
-            for j in range(len(data['servers'][i]['server']['checks'])):
-                wtfk = data['servers'][i]['server']['checks'][j]
-                if args_con.mode == wtfk['name']:
-                    lis.append(args_con.mode)
-                    if wtfk['success'] == True:
-                        cod = wtfk['command']
-                        if cod == 'service_stat(arg)':
-                            arg = data['servers'][i]['server']['crit_serv']
-                        cod_key = eval(cod)
-                    else:
-                        print('Please see the config_file (check success true/false)')
-                else:
-                    continue
+    def run(self):
 
+        if cod == 'service_stat(arg)':
+            arg = data['servers'][i]['server']['crit_serv']
+        self.result = eval(cod)
 
+    def join(self, *args):
+        
+        threading.Thread.join(self)
+        return self.result
 
-            ssh.close()
-    return cod_key
-
-
-if __name__ == "__main__":
+if __name__ == '__main__':
 
     args_con = createParser()
     check_json()
 
+    cod_out = []
+    lis = []
 
     with open("/tmp/pika/checks_script.json","r")as lafa:
         data = json.load(lafa)
@@ -210,21 +194,55 @@ if __name__ == "__main__":
                 check = data['servers'][i]['server']['checks'][j]
                 if check['success'] == True:
                     cod = check['command']
-                    arg = data['servers'][i]['server']['crit_serv']
-                    cod_out = eval(cod)
+                    myThread = CheckThread()
+                    myThread.start()
+
+                    results = myThread.join()
+                    res = str(results)
+                    cod_out.append(res)
+                else:
+                    continue
 
             ssh.close()
+    
+
     elif args_con.ip is not None and args_con.mode is not None :
-        cod_out = keys_check()
+
+        tor = args_con.ip[0]
+        for i in range(len(data['servers'])):
+            if tor == data['servers'][i]['server']['host']:
+                host = data['servers'][i]['server']['host']
+                username = data['servers'][i]['server']['user']
+                #password = data['servers'][i]['server']['password']
+                port = data['servers'][i]['server']['port']
+                ssh = paramiko.SSHClient()
+                ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+                privkey = paramiko.RSAKey.from_private_key_file('/tmp/pika/ssh/id_rsa')
+                ssh.connect(hostname=host, username=username, port=port, pkey=privkey)
+
+                for j in range(len(data['servers'][i]['server']['checks'])):
+                    wtfk = data['servers'][i]['server']['checks'][j]
+                    if args_con.mode == wtfk['name']:
+                        lis.append(args_con.mode)
+                        cod = wtfk['command']
+                        myThread = CheckThread()
+                        myThread.start()
+
+                        result = myThread.join()
+                        res = str(result)
+                        cod_out.append(res)
+                   else:
+                        continue
+
+                ssh.close()
+
+        if args_con.mode not in lis:
+            print('Check is not founded')
 
     else:
         print('Please see the HELP: "python test.py -h" or "python test.py --help" and try again')
 
-    if cod_out == "2":
-        sys.exit(2)
-    elif cod_out == "3":
-        sys.exit(3)
-    elif cod_out == "1":
-        sys.exit(1)
-    else:
-        sys.exit(0)
+    for c in cod_out:
+        n = int(c)
+        sys.exit(n)
+                                                     
