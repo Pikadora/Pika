@@ -139,7 +139,21 @@ def check_json():
                 }
             ]
         }
+    try:
 
+        if os.path.isfile("/tmp/pika/checks_script.json"):
+            print('File is here')
+            with open("/tmp/pika/checks_script.json", "r") as lop:
+                numb = json.load(lop)
+            jsonschema.validate(numb, schema)
+            print('Check_json is OK')
+        else:
+            with open("/tmp/pika/checks_script.json", "w") as spr:
+                json.dump(data_json, spr,indent=4)
+            print('Check_json now is here')
+    except jsonschema.exceptions.ValidationError:
+        print('json file:\n', traceback.format_exc())
+    
 def createParser():
 
     parser = argparse.ArgumentParser(description='Three check options.')
