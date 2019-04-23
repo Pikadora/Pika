@@ -211,9 +211,8 @@ if __name__ == '__main__':
                     myThread = CheckThread()
                     myThread.start()
 
-                    results = myThread.join()
-                    res = str(results)
-                    cod_out.append(res)
+                    result = myThread.join()
+                    cod_out.append(result)
                 else:
                     continue
 
@@ -243,8 +242,7 @@ if __name__ == '__main__':
                         myThread.start()
 
                         result = myThread.join()
-                        res = str(result)
-                        cod_out.append(res)
+                        cod_out.append(result)
                    else:
                         continue
 
@@ -258,5 +256,5 @@ if __name__ == '__main__':
 
     for c in cod_out:
         n = int(c)
-        sys.exit(n)
+        sys.exit(c)
                                                      
