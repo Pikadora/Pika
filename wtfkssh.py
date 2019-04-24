@@ -1,7 +1,6 @@
 import sys, re, os
 import json, os.path
 import argparse, jsonschema, paramiko
-import traceback
 import threading, logging
 
 def service_stat(arg):
