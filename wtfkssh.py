@@ -5,7 +5,7 @@ import threading, logging
 
 def service_stat(arg):
 
-    logger.debug('Check services started.')
+    logger.debug('Check services started')
 
     crit_serv = arg
     command_line ="cat /opt/naumen/nauphone/snmp/naucore"
@@ -17,16 +17,17 @@ def service_stat(arg):
             dict_out[file_call[i]] = file_call[i + 2]
     if dict_out:
 
-        logger.critical('There are offline services:')
+        logger.critical('There are offline important services!')
         for ser in dict_out:
             print (ser,':',dict_out[ser])
         return 2
 
     logger.info('There are no offline services!')
     return 0
+
 def sip_trunk():
 
-    logger.debug('Check sip_trunks started.')
+    logger.debug('Check sip_trunks started')
 
     cmnd_line ="cat /opt/naumen/nauphone/snmp/nausipproxy "
     stdin, stdout, stderr = ssh.exec_command(cmnd_line)
@@ -43,14 +44,14 @@ def sip_trunk():
         logger.info('There are some good sip_trunks.')
         return 0
 
-    logger.critical('There are all sip trunks have bad status:')
+    logger.critical('There are all sip trunks have bad status!')
     for fine in file_in:
         print(fine)
     return 3
 
 def sum_oper():
 
-    logger.debug('Check sum_oper started.')
+    logger.debug('Check sum_oper started')
 
     cmnd_line = "sleep 1 | /opt/naumen/nauphone/bin/naucore show connections"
     stdin, stdout, stderr = ssh.exec_command(cmnd_line)
@@ -78,7 +79,7 @@ def check_json():
     schema = {
         "type": "object",
         "properties": {
-            "service":{
+            "servers":{
                 "type": "array",
                 "items": {
                     "type": "object",
@@ -96,6 +97,7 @@ def check_json():
                                         "type":"string"
                                     }
                                 },
+                                "file_log" :{"type":"string"},
                                 "checks": {
                                     "type": "array",
                                     "items": {
@@ -125,7 +127,7 @@ def check_json():
                         "password": "root123",
                         "port": 22,
                         "crit_serv": ["naubuddy","nautel","nausipproxy","naufileservice","naucm","nauqpm"],
-                        "log_file" : "/tmp/pika/some_info.log",
+                        "file_log" : "/tmp/pika/some_info.log",
                         "checks": [
                             {
                                 "name": "services",
@@ -154,15 +156,15 @@ def check_json():
             with open("/tmp/pika/checks_script.json", "r") as lop:
                 numb = json.load(lop)
             jsonschema.validate(numb, schema)
-            logger.info('Check_json is OK')
+            logger.info('Checks_json is OK')
         else:
             with open("/tmp/pika/checks_script.json", "w") as spr:
                 json.dump(data_json, spr,indent=4)
             logger.info('Check_json now is here')
 
     except jsonschema.exceptions.ValidationError:
-        #print('json file:\n', traceback.format_exc())
         logger.error('There are some mistakes in check_script.json', exc_info = True)
+        sys.exit()
 
 def createParser():
 
@@ -172,7 +174,7 @@ def createParser():
     args_con = parser.parse_args()
 
     return args_con
-    
+
 class CheckThread(threading.Thread):
 
     def init(self,cod):
@@ -192,27 +194,21 @@ class CheckThread(threading.Thread):
         threading.Thread.join(self)
 
         return self.result
+
 if __name__ == '__main__':
 
     try:
-        #logging.basicConfig(level=logging.DEBUG, format='%(name)s - %(levelname)s - %(message)s',)
 
         logger = logging.getLogger (__name__)
         logger.setLevel(logging.DEBUG)
 
-        formatter = logging.Formatter('%(name)s - %(levelname)s - %(message)s')
-
         console = logging.StreamHandler()
         console.setLevel(logging.INFO)
+        formatter = logging.Formatter('%(name)s - %(levelname)s - %(message)s')
         console.setFormatter(formatter)
-
-        file_handler = logging.FileHandler('/tmp/pika/some_info.log')
-        file_handler.setLevel(logging.WARNING)
-        file_handler.setFormatter(formatter)
-
+        
         logger.addHandler(console)
-        logger.addHandler(file_handler)
-
+        
         args_con = createParser()
         check_json()
 
@@ -230,6 +226,13 @@ if __name__ == '__main__':
                 #password = data['servers'][i]['server']['password']
                 port = data['servers'][i]['server']['port']
 
+                file_log =  data['servers'][i]['server']['file_log']
+                fil_hand = logging.FileHandler(file_log)
+                fil_hand.setLevel(logging.WARNING)
+                formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+                fil_hand.setFormatter(formatter)
+                logger.addHandler(fil_hand)
+
                 logger.debug('ssh started.')
                 ssh = paramiko.SSHClient()
                 ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
@@ -240,13 +243,14 @@ if __name__ == '__main__':
                     check = data['servers'][i]['server']['checks'][j]
                     if check['success'] == True:
                         cod = check['command']
-
+                        
                         myThread = CheckThread()
-                        myThread.start()
                         logger.debug('thread started.')
-                        result = myThread.join()
-                        logger.debug('thread stoped.')
+                        myThread.start()
 
+                        logger.debug('thread stoped.')
+                        result = myThread.join()
+                        
                         cod_out.append(result)
 
                     else:
@@ -254,7 +258,7 @@ if __name__ == '__main__':
 
                 ssh.close()
                 logger.debug('ssh stopped.')
-                
+
         elif args_con.ip is not None and args_con.mode is not None :
 
             tor = args_con.ip[0]
@@ -264,6 +268,13 @@ if __name__ == '__main__':
                     username = data['servers'][i]['server']['user']
                     #password = data['servers'][i]['server']['password']
                     port = data['servers'][i]['server']['port']
+
+                    file_log =  data['servers'][i]['server']['file_log']
+                    fil_hand = logging.FileHandler(file_log)
+                    fil_hand.setLevel(logging.WARNING)
+                    formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+                    fil_hand.setFormatter(formatter)
+                    logger.addHandler(fil_hand)
 
                     logger.debug('ssh started.')
                     ssh = paramiko.SSHClient()
@@ -278,11 +289,12 @@ if __name__ == '__main__':
                             cod = wtfk['command']
 
                             myThread = CheckThread()
-                            myThread.start()
                             logger.debug('thread started.')
-                            result = myThread.join()
+                            myThread.start()
+                            
                             logger.debug('thread stoped.')
-
+                            result = myThread.join()
+                            
                             cod_out.append(result)
 
                         else:
@@ -303,7 +315,7 @@ if __name__ == '__main__':
                 sys.exit(n)
 
         sys.exit(0)
-
+        
     except KeyError:
         logger.error("There are some mistakes in check_script.json, module doesn't find key", exc_info = True)
     except FileNotFoundError:
@@ -312,4 +324,12 @@ if __name__ == '__main__':
         logger.error("There are some mistakes in check_script.json, module mustn't read check_script.json", exc_info = True)
     except paramiko.ssh_exception.NoValidConnectionsError:
         logger.error("Unable to connect",exc_info = True)
+
+
+
+                    
+
+                        
+        
+
 
