@@ -2,6 +2,7 @@ import sys, re, os
 import json, os.path
 import argparse, jsonschema, paramiko
 import threading, logging
+import time, signal
 
 def service_stat(arg):
 
@@ -17,20 +18,20 @@ def service_stat(arg):
             dict_out[file_call[i]] = file_call[i + 2]
     if dict_out:
 
-        logger.critical('There are offline important services!')
+        logger.critical('There are offline important services!{}'.format(threading.currentThread()))
         for ser in dict_out:
             print (ser,':',dict_out[ser])
         return 2
 
-    logger.info('There are no offline services!')
+    logger.info('There are no offline services!{crit_serv},{threading.currentThread()}')
     return 0
 
 def sip_trunk():
 
     logger.debug('Check sip_trunks started')
 
-    cmnd_line ="cat /opt/naumen/nauphone/snmp/nausipproxy "
-    stdin, stdout, stderr = ssh.exec_command(cmnd_line)
+    command ="cat /opt/naumen/nauphone/snmp/nausipproxy "
+    stdin, stdout, stderr = ssh.exec_command(command)
     file_in = stdout.read().decode().splitlines()
     out_file = []
     for fine in file_in:
@@ -44,7 +45,7 @@ def sip_trunk():
         logger.info('There are some good sip_trunks.')
         return 0
 
-    logger.critical('There are all sip trunks have bad status!')
+    logger.critical(f'There are all sip trunks have bad status!{file_in},{threading.currentThread()}')
     for fine in file_in:
         print(fine)
     return 3
@@ -64,14 +65,13 @@ def sum_oper():
             dic_out.append(line)
             n += 1
 
-    logger.info('Number of operators: {}'.format(n))
-
+    logger.info(f'Number of operators: {n},{threading.currentThread()}')
     if n > 0:
         for i in range(len(dic_out)):
             print (dic_out[i])
         return 0
 
-    logger.critical('There are no operators!')
+    logger.critical('There are no operators!{}'.format(threading.currentThread()))
     return 1
 
 def check_json():
@@ -79,6 +79,8 @@ def check_json():
     schema = {
         "type": "object",
         "properties": {
+            "is_demon":{"type": "boolean"},
+            "interval":{"type": "integer"},
             "servers":{
                 "type": "array",
                 "items": {
@@ -116,8 +118,10 @@ def check_json():
             }
         }
     }
-
+    
     data_json = {
+        "is_demon": False,
+        "interval": 30,
         "servers": [
             {
                 "server":
@@ -127,7 +131,7 @@ def check_json():
                         "password": "root123",
                         "port": 22,
                         "crit_serv": ["naubuddy","nautel","nausipproxy","naufileservice","naucm","nauqpm"],
-                        "file_log" : "/tmp/pika/some_info.log",
+                        "file_log" : "/tmp/pika/log_info.log",
                         "checks": [
                             {
                                 "name": "services",
@@ -150,7 +154,7 @@ def check_json():
             ]
         }
 
-    try:
+     try:
         if os.path.isfile("/tmp/pika/checks_script.json"):
             logger.info('File is here')
             with open("/tmp/pika/checks_script.json", "r") as lop:
@@ -175,18 +179,33 @@ def createParser():
 
     return args_con
 
+def check_logFile():
+
+    if os.path.isfile("/tmp/pika/log_info.log"):
+        logger.info('log_file is here')
+    else:
+        with open("/tmp/pika/log_info.log", "w") as new:
+            new.write('')
+        logger.info('Now log_file is here')
+
+    file_log =  data['servers'][i]['server']['file_log']
+
+    return file_log
+
 class CheckThread(threading.Thread):
 
-    def init(self,cod):
+    def __init__(self,cod,arg):
 
+        threading.Thread.__init__(self)
         self.result = None
-        threading.Thread.init(self)
+        self.cod = cod
+        self.arg = arg
 
     def run(self):
 
-        if cod == 'service_stat(arg)':
-            arg = data['servers'][i]['server']['crit_serv']
-        self.result = eval(cod)
+        if self.cod == 'service_stat(arg)':
+            arg = self.arg
+        self.result = eval(self.cod)
         logger.debug('Cod started.')
 
     def join(self, *args):
@@ -195,32 +214,70 @@ class CheckThread(threading.Thread):
 
         return self.result
 
-if __name__ == '__main__':
+class Signal_daemon:
 
-    try:
+    kill_daemon = False
 
-        logger = logging.getLogger (__name__)
-        logger.setLevel(logging.DEBUG)
+    def __init__(self):
 
-        console = logging.StreamHandler()
-        console.setLevel(logging.INFO)
-        formatter = logging.Formatter('%(name)s - %(levelname)s - %(message)s')
-        console.setFormatter(formatter)
-        
-        logger.addHandler(console)
-        
-        args_con = createParser()
-        check_json()
+        signal.signal(signal.SIGTERM, self.exit_gracefully)
 
-        cod_out = []
-        lis = []
+    def exit_gracefully(self, signum, frame):
 
-        with open("/tmp/pika/checks_script.json","r")as lafa:
-            data = json.load(lafa)
+        self.kill_daemon = True
 
-        if args_con.ip is None and args_con.mode is None:
+def main():
 
-            for i in range(len(data['servers'])):
+    if args_con.ip is None and args_con.mode is None:
+
+        for i in range(len(data['servers'])):
+            host = data['servers'][i]['server']['host']
+            username = data['servers'][i]['server']['user']
+            #password = data['servers'][i]['server']['password']
+            port = data['servers'][i]['server']['port']
+
+            file_log =  data['servers'][i]['server']['file_log']
+            fil_hand = logging.FileHandler(file_log)
+            fil_hand.setLevel(logging.WARNING)
+            formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+            fil_hand.setFormatter(formatter)
+            logger.addHandler(fil_hand)
+
+            logger.debug('ssh started.')
+
+            global ssh
+
+            ssh = paramiko.SSHClient()
+            ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+            privkey = paramiko.RSAKey.from_private_key_file('/tmp/pika/ssh/id_rsa')
+            ssh.connect(hostname=host, username=username, port=port, pkey=privkey)
+
+            for j in range(len(data['servers'][i]['server']['checks'])):
+                check = data['servers'][i]['server']['checks'][j]
+                if check['success'] == True:
+                    cod = check['command']
+                    if cod == 'service_stat(arg)':
+                        arg = data['servers'][i]['server']['crit_serv']
+                    myThread = CheckThread(cod,arg)
+                    logger.debug('thread started.')
+                    myThread.start()
+
+                    logger.debug('thread stoped.')
+                    result = myThread.join()
+
+                    cod_out.append(result)
+
+                else:
+                    continue
+
+            ssh.close()
+            logger.debug('ssh stopped.')
+
+    elif args_con.ip is not None and args_con.mode is not None :
+
+        tor = args_con.ip[0]
+        for i in range(len(data['servers'])):
+            if tor == data['servers'][i]['server']['host']:
                 host = data['servers'][i]['server']['host']
                 username = data['servers'][i]['server']['user']
                 #password = data['servers'][i]['server']['password']
@@ -240,17 +297,20 @@ if __name__ == '__main__':
                 ssh.connect(hostname=host, username=username, port=port, pkey=privkey)
 
                 for j in range(len(data['servers'][i]['server']['checks'])):
-                    check = data['servers'][i]['server']['checks'][j]
-                    if check['success'] == True:
-                        cod = check['command']
-                        
-                        myThread = CheckThread()
+                    wtfk = data['servers'][i]['server']['checks'][j]
+                    if args_con.mode == wtfk['name']:
+                        lis.append(args_con.mode)
+                        cod = wtfk['command']
+                        if cod == 'service_stat(arg)':
+                            arg = data['servers'][i]['server']['crit_serv']
+
+                        myThread = CheckThread(cod,arg)
                         logger.debug('thread started.')
                         myThread.start()
 
                         logger.debug('thread stoped.')
                         result = myThread.join()
-                        
+
                         cod_out.append(result)
 
                     else:
@@ -259,55 +319,49 @@ if __name__ == '__main__':
                 ssh.close()
                 logger.debug('ssh stopped.')
 
-        elif args_con.ip is not None and args_con.mode is not None :
-
-            tor = args_con.ip[0]
-            for i in range(len(data['servers'])):
-                if tor == data['servers'][i]['server']['host']:
-                    host = data['servers'][i]['server']['host']
-                    username = data['servers'][i]['server']['user']
-                    #password = data['servers'][i]['server']['password']
-                    port = data['servers'][i]['server']['port']
-
-                    file_log =  data['servers'][i]['server']['file_log']
-                    fil_hand = logging.FileHandler(file_log)
-                    fil_hand.setLevel(logging.WARNING)
-                    formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
-                    fil_hand.setFormatter(formatter)
-                    logger.addHandler(fil_hand)
-
-                    logger.debug('ssh started.')
-                    ssh = paramiko.SSHClient()
-                    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-                    privkey = paramiko.RSAKey.from_private_key_file('/tmp/pika/ssh/id_rsa')
-                    ssh.connect(hostname=host, username=username, port=port, pkey=privkey)
-
-                    for j in range(len(data['servers'][i]['server']['checks'])):
-                        wtfk = data['servers'][i]['server']['checks'][j]
-                        if args_con.mode == wtfk['name']:
-                            lis.append(args_con.mode)
-                            cod = wtfk['command']
-
-                            myThread = CheckThread()
-                            logger.debug('thread started.')
-                            myThread.start()
-                            
-                            logger.debug('thread stoped.')
-                            result = myThread.join()
-                            
-                            cod_out.append(result)
-
-                        else:
-                            continue
-
-                    ssh.close()
-                    logger.debug('ssh stopped.')
-
-                    if args_con.mode not in lis:
-                        logger.info('Check is not founded')
+                if args_con.mode not in lis:
+                    logger.info('Check is not founded')
 
         else:
             logger.info('Please see the HELP: "python test.py -h" or "python test.py --help" and try again')
+
+    return cod_out
+
+if __name__ == '__main__':
+
+    try:
+        logger = logging.getLogger (__name__)
+        logger.setLevel(logging.DEBUG)
+
+        console = logging.StreamHandler()
+        console.setLevel(logging.INFO)
+        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        console.setFormatter(formatter)
+
+        logger.addHandler(console)
+
+        args_con = createParser()
+        check_json()
+
+        cod_out = []
+        lis = []
+
+        signal = Signal_daemon()
+
+        with open("/tmp/pika/checks_script.json","r")as lafa:
+            data = json.load(lafa)
+
+        while data['is_demon'] == True:
+            cod_out = main()
+            logger.info('Programm sleep {}'.format(data['interval']))
+            time.sleep(data['interval'])
+            if signal.kill_daemon:
+                logger.info('The program is closed by a signal')
+                break
+        else:
+            for i in range(len(data['servers'])):
+                cod_out = main()
+
 
         for c in cod_out:
             if c > 0 :
@@ -316,6 +370,8 @@ if __name__ == '__main__':
 
         sys.exit(0)
         
+        logger.info('Complete!')
+
     except KeyError:
         logger.error("There are some mistakes in check_script.json, module doesn't find key", exc_info = True)
     except FileNotFoundError:
@@ -326,10 +382,7 @@ if __name__ == '__main__':
         logger.error("Unable to connect",exc_info = True)
 
 
+       
 
-                    
-
-                        
-        
 
 
