@@ -18,7 +18,6 @@
 3 - При выполнении проверки возникла ошибка: все SIP-транки не работают.
 
 """
-
 import sys, re, os
 import json, os.path
 import argparse, jsonschema, paramiko
@@ -34,7 +33,7 @@ import time, signal
 Функция просматривает текстовый файл и проверяет выполнение двух условий:
 1. Наличие имени сервиса в списке критических сервисов, указанном в конфигурационном файле.
 2. Статус *отключен*.
-Все сервисы при статусе *отключен* выводит в критичное сообщение на консоль и регистрирует уведомление в файл 
+Все сервисы при статусе *отключен* выводит в критичное сообщение на консоль и регистрирует уведомление в файл
 регистрации критичных уведомлений.
 А так же отправляет код выхода 2 в Consul для дальнейших действий.
 
@@ -43,7 +42,7 @@ import time, signal
 '''
 def service_stat(arg,host):
 
-    logger.debug('Check services started.')
+    logger.debug('{} - Check services started.'.format(host))
 
     crit_serv = arg
     host = host
@@ -57,7 +56,7 @@ def service_stat(arg,host):
 
     if dict_out:
 
-        logger.critical(f'{host} - There are offline important services!{*dict_out.items()}')
+        logger.critical(f'{host} - There are offline important services!{ser,':', dict_out[ser] for ser in dict_out}')
         logger.debug("Thread of function services_stat{}.".format(threading.currentThread()))
 
         for ser in dict_out:
@@ -69,17 +68,17 @@ def service_stat(arg,host):
 
 # Функция выявления доуступности SIP-trunkов.
 '''
-Сервис sipproxy 
+Сервис sipproxy
 Информацию о наименовании и код статуса канала хранит в текстовом файле.
 
-Функция просматривает построчно текстовый файл и выполняет поиск кода 2хх, что означает доступный SIP trunk. 
+Функция просматривает построчно текстовый файл и выполняет поиск кода 2хх, что означает доступный SIP trunk.
 
-Для удобного поиска используем метод импортируемой библиотеки re, для осуществления поиска в строке, использования 
-регулярных выражений. 
-Для поиска используется метод  re.findall, потому что у него нет ограничений на осуществления поиска в начеле строки или конце. 
+Для удобного поиска используем метод импортируемой библиотеки re, для осуществления поиска в строке, использования
+регулярных выражений.
+Для поиска используется метод  re.findall, потому что у него нет ограничений на осуществления поиска в начеле строки или конце.
 В конце поиска возвращает список всех совпадений, найденных в строке.
 
-При отсутсвия каналов с таким кодом - выводит критичное сообщение на консоль и регистрирует его в файл регистрации 
+При отсутсвия каналов с таким кодом - выводит критичное сообщение на консоль и регистрирует его в файл регистрации
 критичных уведомлений.
 А так же отправляет код выхода 3 в Consul для дальнейших действий.
 
@@ -88,7 +87,7 @@ def service_stat(arg,host):
 '''
 def sip_trunk(host):
 
-    logger.debug('Check sip_trunks started.')
+    logger.debug('{} - Check sip_trunks started.'.format(host))
     host = host
 
     command ="cat /opt/naumen/nauphone/snmp/nausipproxy "
@@ -103,11 +102,12 @@ def sip_trunk(host):
         for ot in out_file:
             print(ot)
 
-        logger.info(f'{host} - There are some good sip_trunks.{out_file}')
+        logger.info(f'{host} - There are some good sip trunks.{ot for ot in out_file}')
         return 0
 
-    logger.critical(f'{host} - There are all sip trunks have bad status!{file_in}')
+    logger.critical(f'{host} - There are all sip trunks have bad status!{fine for fine in file_in}')
     logger.debug("Thread of def sip_trunk{}.".format(threading.currentThread()))
+
     for fine in file_in:
         print(fine)
     return 3
@@ -117,25 +117,25 @@ def sip_trunk(host):
 Выводим список подключений на сервере с помощью команды : *sleep 1 | /opt/naumen/nauphone/bin/naucore show connections*
 Информация выводится на консоль.
 
-Функция просматривает техстовый файл и выполняет поиск, основанный на использовании регулярных выражений, ключа *client*, 
+Функция просматривает техстовый файл и выполняет поиск, основанный на использовании регулярных выражений, ключа *client*,
 что означает авторизованный пользователь.
 
-Для удобного поиска используем метод импортируемой библиотеки re, для осуществления поиска в строке, использования 
-регулярных выражений. 
-Для поиска используется метод  re.findall, потому что у него нет ограничений на осуществления поиска в начеле строки или конце. 
+Для удобного поиска используем метод импортируемой библиотеки re, для осуществления поиска в строке, использования
+регулярных выражений.
+Для поиска используется метод  re.findall, потому что у него нет ограничений на осуществления поиска в начеле строки или конце.
 В конце поиска возвращает список всех совпадений, найденных в строке.
 
-При отсутсви авторизованных пользователей - выводит критичное сообщение, на консоль и регистрирует его в файл регистрации 
+При отсутсви авторизованных пользователей - выводит критичное сообщение, на консоль и регистрирует его в файл регистрации
 критичных уведомлений.
 А так же отправляет код выхода 1 в Consul для дальнейших действий.
 
-При выявлении одного и более авторизованных операторов, выводит адрес хоста и количество авторизованных операторов, 
+При выявлении одного и более авторизованных операторов, выводит адрес хоста и количество авторизованных операторов,
 а также в Consul отправляется 0.
 
 '''
 def sum_oper(host):
 
-    logger.debug('Check sum_oper started')
+    logger.debug('{} - Check sum_oper started.'.format(host))
     host = host
 
     cmnd_line = "sleep 1 | /opt/naumen/nauphone/bin/naucore show connections"
@@ -161,8 +161,7 @@ def sum_oper(host):
 
 # Функция проверки файла конфигурации на наличие,правильную конструкцию, или , при отсутствии  - создания файла конфигурации.
 def check_json():
-
-    # Схема, с помощью которой производится проверка построение конфигурационного файла.    
+    # Схема, с помощью которой производится проверка построение конфигурационного файла.
     schema = {
         "type": "object",
         "properties": {
@@ -208,7 +207,7 @@ def check_json():
 
     # Шаблон конфигурационного файла для модуля.
     data_json = {
-        "is_demon": false,
+        "is_demon": False,
         "interval": 15,
         "file_log":"/tmp/pika/log_info.log",
         "servers": [
@@ -230,17 +229,17 @@ def check_json():
                         {
                             "name": "services",
                             "command": "service_stat(arg,host)",
-                            "success": false
+                            "success": False
                         },
                         {
                             "name": "sip_trunks",
                             "command": "sip_trunk(host)",
-                            "success": false
+                            "success": False
                         },
                         {
                             "name": "operators",
                             "command": "sum_oper(host)",
-                            "success": false
+                            "success": False
                         }
                     ]
                 }
@@ -261,18 +260,18 @@ def check_json():
                     "checks": [
                         {
                             "name": "services",
-                            "command": "service_stat(host)",
-                            "success": false
+                            "command": "service_stat(arg,host)",
+                            "success": False
                         },
                         {
                             "name": "sip_trunks",
                             "command": "sip_trunk(host)",
-                            "success": false
+                            "success": False
                         },
                         {
                             "name": "operators",
                             "command": "sum_oper(host)",
-                            "success": false
+                            "success": False
                         }
                     ]
                 }
@@ -283,13 +282,13 @@ def check_json():
     '''
     Проверка на наличие файла конфигурации. Используем метод s.path.isfile из подмодуля os.path, встроенного в библиотеку os.
     Метод проверяет наличие файла по указанному пути и возвращает булевое значение True - при наличии, False - при отсутствии.
-    
+
     При присутсвии - проверка на конструкцию. Используем метод валидации библиотеки jsonschema, т.к. работаем с форматом json.
-    Метод сначала проверит, что предоставленная схема сама по себе действительна, во избежание других ошибок или сбоя, а далее 
+    Метод сначала проверит, что предоставленная схема сама по себе действительна, во избежание других ошибок или сбоя, а далее
     проверит необходимый объект по данной схеме.
-    
+
     При отсутсвии - создание и проверки.
-    
+
     '''
     try:
         if os.path.isfile("/tmp/pika/checks_script.json"):
@@ -297,12 +296,13 @@ def check_json():
             with open("/tmp/pika/checks_script.json", "r") as lop:
                 numb = json.load(lop)
             jsonschema.validate(numb, schema)
-            logger.info('Checks_json is OK.')
+            logger.info('Checks config json is OK.')
         else:
             with open("/tmp/pika/checks_script.json", "w") as spr:
                 json.dump(data_json, spr,indent=4)
                 logger.debug('Check config json now is here.')
-                numb = json.load(spr)
+            with open("/tmp/pika/checks_script.json", "r") as lop:
+                numb = json.load(lop)
             jsonschema.validate(numb, schema)
             logger.info('Checks config json is OK.')
 
@@ -317,8 +317,8 @@ def check_json():
 
 # Создание ключей, для запуска модуля режиме одной определенной проверки на определенном сервере.
 '''
-Использовали библиотеку argparse, импортирование которой позволяет легко описать интерфейс командной строки, а именно 
-описать аргументы, которые должны быть указаны, как их обработать, автоматически генерирует справочную страницу, а также 
+Использовали библиотеку argparse, импортирование которой позволяет легко описать интерфейс командной строки, а именно
+описать аргументы, которые должны быть указаны, как их обработать, автоматически генерирует справочную страницу, а также
 выводит сообщения и ошибки, когда пользователи используют недопустимые аргументы.
 
 '''
@@ -353,7 +353,7 @@ def check_logFile():
 
 # Создание класса потоков для запуска выполнения функций в параллельных потоках.
 '''
-Класс состоит из метода, выполняющего роль конструктора класса, метод описывающий функции объекта данного класса, 
+Класс состоит из метода, выполняющего роль конструктора класса, метод описывающий функции объекта данного класса,
 которые он будет иметь после его создания, метод ожидания реализации объекта,для получения результата функций объекта,
 и метод завершения существования объекта.
 
@@ -398,7 +398,7 @@ class CheckThread(threading.Thread):
 1. kill -SIGTERM *pid_процесса*
 2. ctrl + C
 
-При объявлении одного из двух сигналов, прекращается работа модуля и выводится сообщение на консоль 
+При объявлении одного из двух сигналов, прекращается работа модуля и выводится сообщение на консоль
 об окончании работы модуля в связи с сигналом.
 '''
 class Signal_daemon:
@@ -420,36 +420,27 @@ class Signal_daemon:
 
 # Главная функция анализирования аргументов, указанных при запуске модуля, выполнение ssh - поключений и запуска потоков.
 '''
-В связи с наличием или отсутсвием аргументов, указанных при запуске модуля, зависит дальнейшая работа модуля: 
+В связи с наличием или отсутсвием аргументов, указанных при запуске модуля, зависит дальнейшая работа модуля:
 с аргументами выполняется ssh - подключение к указанному серверу и выполняется только одна указанная проверка(функция),
 без аргументов, подключение происходит поочередно ко всем серверам и выполнение проверок, указанным в конфигурационном файле.
 
 '''
 def main():
 
+    global ssh
     # Вариант запуска функций, если аргументы не указаны.
     if args_con.ip is None and args_con.mode is None:
-
+         # Считывание адреса сервера для осеществления подключения
         for i in range(len(data['servers'])):
             host = data['servers'][i]['server']['host']
             username = data['servers'][i]['server']['user']
             #password = data['servers'][i]['server']['password']
             port = data['servers'][i]['server']['port']
 
-            file_logger = check_logFile()
-
-            fil_hand = logging.FileHandler(file_logger, mode = "w")
-            fil_hand.setLevel(logging.WARNING)
-            formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
-            fil_hand.setFormatter(formatter)
-            logger.addHandler(fil_hand)
-
             logger.debug('{} - SSH started.'.format(host))
-        
-            try:
 
-                global ssh
-                
+            try:
+                # Подключение к серверу
                 ssh = paramiko.SSHClient()
                 ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
                 privkey = paramiko.RSAKey.from_private_key_file('/tmp/pika/ssh/id_rsa')
@@ -461,7 +452,7 @@ def main():
                         cod = check['command']
                         arg = data['servers'][i]['server']['crit_serv']
 
-                        
+
                         myThread = CheckThread(cod,host,arg)
                         logger.debug('Thread started.')
                         myThread.start()
@@ -476,8 +467,6 @@ def main():
 
                     else:
                         continue
-        
-
                 ssh.close()
                 logger.debug('{} - SSH stopped.'.format(host))
 
@@ -485,10 +474,11 @@ def main():
                 logger.warning("Unable to connect {}".format(host))
                 logger.exception("NoValidConnectionsError(paramiko). Unable to connect {}".format(host))
 
-    # Вариант подключения к серверу и запуска функции, если аргументы указаны.           
+    # Вариант подключения к серверу и запуска функции, если аргументы указаны.
     elif args_con.ip is not None and args_con.mode is not None :
 
         tor = args_con.ip[0]
+        # Считывание адреса сервера для осеществления подключения
         for i in range(len(data['servers'])):
             if tor == data['servers'][i]['server']['host']:
                 host = data['servers'][i]['server']['host']
@@ -496,18 +486,10 @@ def main():
                 #password = data['servers'][i]['server']['password']
                 port = data['servers'][i]['server']['port']
 
-                file_logger = check_logFile()
-
-                fil_hand = logging.FileHandler(file_logger, mode = "w")
-                fil_hand.setLevel(logging.WARNING)
-                formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
-                fil_hand.setFormatter(formatter)
-                logger.addHandler(fil_hand)
-
                 logger.debug('{} - SSH started.'.format(host))
 
                 try:
-                    
+                    # Подключение к серверу
                     ssh = paramiko.SSHClient()
                     ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
                     privkey = paramiko.RSAKey.from_private_key_file('/tmp/pika/ssh/id_rsa')
@@ -520,7 +502,6 @@ def main():
                             cod = checks['command']
                             arg = data['servers'][i]['server']['crit_serv']
 
-                            
                             myThread = CheckThread(cod,host,arg)
                             logger.debug('Thread started.')
                             myThread.start()
@@ -552,8 +533,11 @@ def main():
 
 #Действия, если модуль запущен
 '''
+Подключение логирование.
+Настройка вывода сообщения в консоль.
 Считывание аргументов.
 Проверка конфигурационного файла.
+Настройка вывода сообщения в файл.
 Запуск прослушивания сигнала остановки.
 Проверка режима запуска.
 Запуск главной функции.
@@ -571,29 +555,36 @@ if __name__ == '__main__':
         console.setFormatter(formatter)
 
         logger.addHandler(console)
-        
+
         args_con = createParser()
         check_json()
+
+        with open("/tmp/pika/checks_script.json","r")as lafa:
+            data = json.load(lafa)
+
+        file_logger = check_logFile()
+        fil_hand = logging.FileHandler(file_logger, mode = "w")
+        fil_hand.setLevel(logging.WARNING)
+        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        fil_hand.setFormatter(formatter)
+        logger.addHandler(fil_hand)
 
         cod_out = []
         lis = []
 
         signal = Signal_daemon()
 
-        with open("/tmp/pika/checks_script.json","r")as lafa:
-            data = json.load(lafa)
-
         while data['is_demon'] == True:
             cod_out = main()
             logger.info('Programm sleep {}'.format(data['interval']))
             time.sleep(data['interval'])
             if signal.kill_daemon:
-                logger.info('The program is closed by a signal')
+                logger.info('The program is closed by a signal.')
                 break
         else:
             cod_out = main()
             logger.info('Complete!')
-            
+
         for c in cod_out:
             if c > 0 :
                 n = c
@@ -602,7 +593,6 @@ if __name__ == '__main__':
 
         sys.exit(0)
 
-    #выявление ошибок
     except KeyError:
         logger.error("There are some mistakes in config json, module doesn't find key.")
         logger.exception("KeyError")
@@ -616,4 +606,3 @@ if __name__ == '__main__':
     except KeyboardInterrupt:
         logger.error("Module suspended by KeyboardInterrupt")
         logger.exception("KeyboardInterrupt")
-        
