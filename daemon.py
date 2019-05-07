@@ -455,7 +455,6 @@ def main():
                         cod = check['command']
                         arg = data['servers'][i]['server']['crit_serv']
 
-
                         myThread = CheckThread(cod,host,arg)
                         logger.debug('Thread started.')
                         myThread.start()
@@ -554,7 +553,7 @@ if __name__ == '__main__':
 
         console = logging.StreamHandler()
         console.setLevel(logging.INFO)
-        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s',  datefmt='%H:%M:%S %d.%m.%Y')
         console.setFormatter(formatter)
 
         logger.addHandler(console)
@@ -568,7 +567,7 @@ if __name__ == '__main__':
         file_logger = check_logFile()
         fil_hand = logging.FileHandler(file_logger, mode = "w")
         fil_hand.setLevel(logging.WARNING)
-        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s', datefmt='%H:%M:%S %d.%m.%Y')
         fil_hand.setFormatter(formatter)
         logger.addHandler(fil_hand)
 
@@ -579,6 +578,7 @@ if __name__ == '__main__':
 
         while data['is_demon'] == True:
             cod_out = main()
+            
             logger.info('Programm sleep {}'.format(data['interval']))
             time.sleep(data['interval'])
             if signal.kill_daemon:
@@ -589,10 +589,8 @@ if __name__ == '__main__':
             logger.info('Complete!')
 
         for c in cod_out:
-            if c > 0 :
-                n = c
-                print(n)
-                sys.exit(n)
+            if c > 0
+                sys.exit(c)
 
         sys.exit(0)
 
@@ -610,8 +608,11 @@ if __name__ == '__main__':
         logger.error("Module suspended by KeyboardInterrupt")
         logger.exception("KeyboardInterrupt")
     except TimeoutError:
-         logger.error("Connection timed out")
-         logger.exception("TimeoutError")
+        logger.error("Connection timed out")
+        logger.exception("TimeoutError")
+    except Exception:
+        logger.error("Oh, new error")
+        logger.exception("Error")
     except:
-         logger.error("Oh, new error")
-         logger.exception("Error")
+        logger.exception("sys")
+
