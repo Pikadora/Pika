@@ -1,61 +1,40 @@
 {
-  "servers": [
-    {
-      "server": "ip_add",
-      "crit_serv": [
-        "naubuddy",
-        "nautel",
-        "nausipproxy",
-        "naufileservice",
-        "naucm",
-        "nauqpm"
-      ],
-      "checks": [
+    "is_demon": true,
+    "interval": 15,
+    "file_log": "/tmp/pika/log_info.log",
+    "servers": [
         {
-          "name": "services",
-          "command": "service_stat()",
-          "success": false
-        },
-        {
-          "name": "sip_trunks",
-          "command": "sip_trunk()",
-          "success": true
-        },
-        {
-          "name": "operators",
-          "command": "kolvo_oper()",
-          "success": false
+            "server": {
+                "host": "172.16.201.101",
+                "user": "root",
+                "password": "root123",
+                "port": 22,
+                "crit_serv": [
+                    "naubuddy",
+                    "nautel",
+                    "nausipproxy",
+                    "naufileservice",
+                    "naucm",
+                    "nauqpm"
+                ],
+                "checks": [
+                    {
+                        "name": "services",
+                        "command": "service_stat(arg,host)",
+                        "success": true
+                    },
+                    {
+                        "name": "sip_trunks",
+                        "command": "sip_trunk(host)",
+                        "success": true
+                    },
+                    {
+                        "name": "operators",
+                        "command": "sum_oper(host)",
+                        "success": true
+                    }
+                ]
+            }
         }
-      ]
-    },
-    {
-      "server": "ip_add",
-      "crit_serv": [
-        "naubuddy",
-        "nautel",
-        "nausipproxy",
-        "naufileservice",
-        "naucm",
-        "nauqpm"
-      ],
-      "checks": [
-        {
-          "name": "services",
-          "command": "service_stat()",
-          "success": false
-        },
-        {
-          "name": "sip_trunks",
-          "command": "sip_trunk()",
-          "success": true
-        },
-        {
-          "name": "operators",
-          "command": "kolvo_oper()",
-          "success": false
-        }
-      ]
-    }
-  ]
+    ]
 }
-
